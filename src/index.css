@@ -1,17 +1,23 @@
 :root {
   font-family: 'Segoe UI', sans-serif;
-  color: #e5dfe8;
-  background: #111014;
+  color: #26344b;
+  background: #fff9ec;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
   --font-display: Georgia, serif;
-  --text-primary: #f0eae2;
-  --text-muted: #9c95a2;
-  --accent: #c4a073;
-  --border: #34313a;
+  --text-primary: #21304a;
+  --text-muted: #596a82;
+  --accent: #df3f4b;
+  --border: #e4d9c3;
+  --surface: #fffefa;
+  --surface-soft: #f7f1e5;
+  --pokemon-red: #df3f4b;
+  --pokemon-blue: #397cc1;
+  --pokemon-yellow: #f2c443;
+  --pokemon-green: #4a9a74;
 }
 
 * {
@@ -31,11 +37,11 @@ input {
 
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid #d5ac78;
+  outline: 2px solid #397cc1;
   outline-offset: 3px;
 }
 
 ::selection {
-  background: rgba(196, 160, 115, 0.32);
-  color: #fffaf1;
+  background: rgba(242, 196, 67, 0.45);
+  color: #21304a;
 }

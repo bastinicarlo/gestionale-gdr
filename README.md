@@ -9,6 +9,15 @@ npm install
 npm run dev
 ```
 
+## Supabase per la condivisione immagini
+
+1. Copia `.env.example` in `.env.local` e inserisci URL del progetto e chiave `sb_publishable`.
+2. Nel dashboard Supabase abilita **Anonymous Sign-Ins** in **Authentication → Sign In / Providers**.
+3. Esegui in ordine, una sola volta ciascuno, i file SQL in `supabase/migrations/` nel **SQL Editor** del progetto.
+4. Riavvia Vite dopo aver modificato `.env.local`.
+
+La scheda **Tavolo** alterna la mappa locale e una composizione immagini condivisa. Il Master crea una stanza e condivide il codice; chi lo possiede può entrare e vedere la composizione. Solo il Master può aggiungere, spostare e ridimensionare le immagini.
+
 ## Stato del prototipo
 
 - Scheda Pokémon demo modificabile, inclusi punti, attributi, abilità e mosse.
@@ -16,8 +25,9 @@ npm run dev
 - Inserimento manuale dei risultati dei dadi fisici.
 - Tiri segreti con rivelazione manuale e registro locale.
 - Partecipanti e appunti dimostrativi.
+- Composizione immagini Supabase condivisa e aggiornata in tempo reale tramite codice stanza.
 
-Non è ancora collegato a Firebase: schede, tiri e appunti non vengono condivisi né salvati tra browser.
+Le schede Pokémon e Allenatore, i tiri, gli appunti e la mappa restano locali e non sono ancora sincronizzati tra browser.
 
 ## Licenze e marchi
 
