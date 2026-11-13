@@ -1,16 +1,30 @@
 import { useState, type FormEvent } from 'react'
 import { PokemonSheet } from './PokemonSheet'
+import { SharedTable } from './SharedTable'
+import { TrainerSheet } from './TrainerSheet'
 import {
   attributes,
+  createEmptyPokemonSheet,
   createInitialPokemonSheet,
+  createInitialTrainerSheet,
   skills,
   type AttributeKey,
   type PokemonSheetData,
   type SkillKey,
+  type TrainerSheetData,
 } from './pokerole'
 import './App.css'
 
 type RollSource = 'online' | 'physical'
+type PokemonLocation = 'team' | 'pc'
+type PokemonEntry = {
+  id: string
+  owner: string
+  location: PokemonLocation
+  sheet: PokemonSheetData
+}
+
+const trainers = ['Ema', 'Nico', 'Sofia']
 
 type Roll = {
   id: string
@@ -24,6 +38,15 @@ type Roll = {
   secret: boolean
   revealed: boolean
   createdAt: Date
+}
+
+const diePips: Record<number, number[]> = {
+  1: [4],
+  2: [0, 8],
+  3: [0, 4, 8],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8],
 }
 
 function isAttributeKey(value: string): value is AttributeKey {
@@ -54,7 +77,28 @@ function formatTime(date: Date) {
 }
 
 function App() {
-  const [sheet, setSheet] = useState<PokemonSheetData>(createInitialPokemonSheet)
+  const [pokemon, setPokemon] = useState<PokemonEntry[]>([
+    {
+      id: 'pokemon-luxio',
+      owner: 'Ema',
+      location: 'team',
+      sheet: createInitialPokemonSheet(),
+    },
+  ])
+  const [trainerSheets, setTrainerSheets] = useState<Record<string, TrainerSheetData>>({
+    Ema: createInitialTrainerSheet('Ema'),
+    Nico: createInitialTrainerSheet('Nico'),
+    Sofia: createInitialTrainerSheet('Sofia'),
+  })
+  const [profileView, setProfileView] = useState<'pokemon' | 'trainer' | 'table'>('pokemon')
+  const [activeRoomCode, setActiveRoomCode] = useState(
+    () => window.localStorage.getItem('cronache-image-room-code') ?? '',
+  )
+  const [selectedPokemonId, setSelectedPokemonId] = useState('pokemon-luxio')
+  const [rosterTrainer, setRosterTrainer] = useState('Ema')
+  const [rosterLocation, setRosterLocation] = useState<PokemonLocation>('team')
+  const [rosterSearch, setRosterSearch] = useState('')
+  const [rosterMessage, setRosterMessage] = useState('')
   const [selectedAttribute, setSelectedAttribute] = useState<AttributeKey>('dexterity')
   const [selectedSkill, setSelectedSkill] = useState<SkillKey>('athletic')
   const [requiredSuccesses, setRequiredSuccesses] = useState(1)
@@ -65,6 +109,40 @@ function App() {
   const [notes, setNotes] = useState('')
   const [rolls, setRolls] = useState<Roll[]>([])
 
+  const activePokemon =
+    pokemon.find((entry) => entry.id === selectedPokemonId) ?? pokemon[0]
+  const sheet = activePokemon.sheet
+  const activeTrainerName = rosterTrainer === 'all' ? trainers[0] : rosterTrainer
+  const activeTrainerSheet = trainerSheets[activeTrainerName]
+  const activeTrainerParty = pokemon
+    .filter((entry) => entry.owner === activeTrainerName && entry.location === 'team')
+    .map((entry) => ({
+      id: entry.id,
+      name: entry.sheet.name,
+      pokemonType: entry.sheet.pokemonType,
+    }))
+  const visiblePokemon = pokemon.filter((entry) => {
+    const matchesTrainer = rosterTrainer === 'all' || entry.owner === rosterTrainer
+    const matchesLocation = entry.location === rosterLocation
+    const query = rosterSearch.trim().toLocaleLowerCase('it-IT')
+    const matchesSearch =
+      !query ||
+      entry.sheet.name.toLocaleLowerCase('it-IT').includes(query) ||
+      entry.sheet.pokemonType.toLocaleLowerCase('it-IT').includes(query) ||
+      entry.owner.toLocaleLowerCase('it-IT').includes(query)
+    return matchesTrainer && matchesLocation && matchesSearch
+  })
+  const teamCount = pokemon.filter(
+    (entry) =>
+      entry.location === 'team' &&
+      (rosterTrainer === 'all' || entry.owner === rosterTrainer),
+  ).length
+  const pcCount = pokemon.filter(
+    (entry) =>
+      entry.location === 'pc' &&
+      (rosterTrainer === 'all' || entry.owner === rosterTrainer),
+  ).length
+
   const dicePool =
     sheet.attributes[selectedAttribute] + sheet.skills[selectedSkill]
   const attributeLabel =
@@ -72,6 +150,79 @@ function App() {
     'Attributi'
   const skillLabel =
     skills.find((skill) => skill.key === selectedSkill)?.label ?? 'Abilità'
+
+  function updateActivePokemon(updatedSheet: PokemonSheetData) {
+    setPokemon((currentPokemon) =>
+      currentPokemon.map((entry) =>
+        entry.id === activePokemon.id ? { ...entry, sheet: updatedSheet } : entry,
+      ),
+    )
+  }
+
+  function updateActiveTrainerSheet(updatedSheet: TrainerSheetData) {
+    setTrainerSheets((currentSheets) => ({
+      ...currentSheets,
+      [activeTrainerName]: updatedSheet,
+    }))
+  }
+
+  function addPokemon() {
+    if (rosterTrainer === 'all') {
+      setRosterMessage('Scegli un allenatore per aggiungere un Pokémon.')
+      return
+    }
+
+    const teamIsFull =
+      pokemon.filter(
+        (entry) => entry.owner === rosterTrainer && entry.location === 'team',
+      ).length >= 6
+    const location: PokemonLocation = teamIsFull ? 'pc' : 'team'
+    const newPokemon: PokemonEntry = {
+      id: crypto.randomUUID(),
+      owner: rosterTrainer,
+      location,
+      sheet: createEmptyPokemonSheet(rosterTrainer),
+    }
+
+    setPokemon((currentPokemon) => [...currentPokemon, newPokemon])
+    setSelectedPokemonId(newPokemon.id)
+    setRosterLocation(location)
+    setRosterSearch('')
+    setRosterMessage(
+      teamIsFull
+        ? `La squadra di ${rosterTrainer} è completa: il nuovo Pokémon è stato aggiunto al PC.`
+        : `Nuovo Pokémon aggiunto alla squadra di ${rosterTrainer}.`,
+    )
+  }
+
+  function moveActivePokemon(location: PokemonLocation) {
+    if (location === 'team') {
+      const teamSize = pokemon.filter(
+        (entry) =>
+          entry.owner === activePokemon.owner &&
+          entry.location === 'team' &&
+          entry.id !== activePokemon.id,
+      ).length
+      if (teamSize >= 6) {
+        setRosterMessage(`La squadra di ${activePokemon.owner} può contenere al massimo 6 Pokémon.`)
+        return
+      }
+    }
+
+    setPokemon((currentPokemon) =>
+      currentPokemon.map((entry) =>
+        entry.id === activePokemon.id ? { ...entry, location } : entry,
+      ),
+    )
+    setRosterTrainer(activePokemon.owner)
+    setRosterLocation(location)
+    setRosterSearch('')
+    setRosterMessage(
+      location === 'pc'
+        ? `${sheet.name || 'Pokémon'} spostato nel PC.`
+        : `${sheet.name || 'Pokémon'} aggiunto alla squadra.`,
+    )
+  }
 
   function handleRoll(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -184,12 +335,211 @@ function App() {
             </div>
             <div className="room-code">
               <span>CODICE STANZA</span>
-              <strong>STANZA-01</strong>
+              <strong>
+                {activeRoomCode
+                  ? activeRoomCode.match(/.{1,4}/g)?.join('-')
+                  : 'NESSUNA'}
+              </strong>
             </div>
           </div>
         </section>
 
-        <PokemonSheet sheet={sheet} onChange={setSheet} />
+        <div className="profile-view-tabs" role="tablist" aria-label="Sezioni della sessione">
+          <button
+            aria-selected={profileView === 'pokemon'}
+            className={profileView === 'pokemon' ? 'is-active' : ''}
+            onClick={() => setProfileView('pokemon')}
+            role="tab"
+            type="button"
+          >
+            Pokémon
+          </button>
+          <button
+            aria-selected={profileView === 'trainer'}
+            className={profileView === 'trainer' ? 'is-active' : ''}
+            onClick={() => setProfileView('trainer')}
+            role="tab"
+            type="button"
+          >
+            Allenatore
+          </button>
+          <button
+            aria-selected={profileView === 'table'}
+            className={profileView === 'table' ? 'is-active' : ''}
+            onClick={() => setProfileView('table')}
+            role="tab"
+            type="button"
+          >
+            Tavolo
+          </button>
+        </div>
+
+        {profileView === 'pokemon' ? (
+          <>
+        <section className="panel roster-panel" aria-labelledby="roster-title">
+          <div className="roster-heading">
+            <div>
+              <div className="eyebrow">ROSTER DELLA SESSIONE</div>
+              <h2 id="roster-title">Squadra e PC</h2>
+              <p>Seleziona un Pokémon per aprire subito la sua scheda.</p>
+            </div>
+            <button
+              className="secondary-button roster-add-button"
+              disabled={rosterTrainer === 'all'}
+              onClick={addPokemon}
+              title={rosterTrainer === 'all' ? 'Seleziona un allenatore' : undefined}
+              type="button"
+            >
+              <span aria-hidden="true">＋</span>
+              Nuovo Pokémon
+            </button>
+          </div>
+
+          <div className="roster-toolbar">
+            <label className="roster-trainer">
+              <span>Allenatore</span>
+              <select
+                onChange={(event) => {
+                  setRosterTrainer(event.target.value)
+                  setRosterMessage('')
+                }}
+                value={rosterTrainer}
+              >
+                <option value="all">Tutti i giocatori</option>
+                {trainers.map((trainer) => (
+                  <option key={trainer} value={trainer}>
+                    {trainer}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="roster-search">
+              <span>Cerca Pokémon</span>
+              <input
+                onChange={(event) => setRosterSearch(event.target.value)}
+                placeholder="Nome, tipo o allenatore"
+                value={rosterSearch}
+              />
+            </label>
+          </div>
+
+          <div className="roster-location-tabs" aria-label="Posizione Pokémon">
+            <button
+              aria-pressed={rosterLocation === 'team'}
+              className={rosterLocation === 'team' ? 'is-active' : ''}
+              onClick={() => setRosterLocation('team')}
+              type="button"
+            >
+              Squadra <span>{rosterTrainer === 'all' ? teamCount : `${teamCount}/6`}</span>
+            </button>
+            <button
+              aria-pressed={rosterLocation === 'pc'}
+              className={rosterLocation === 'pc' ? 'is-active' : ''}
+              onClick={() => setRosterLocation('pc')}
+              type="button"
+            >
+              PC <span>{pcCount}</span>
+            </button>
+          </div>
+
+          {visiblePokemon.length === 0 ? (
+            <p className="roster-empty">
+              {rosterSearch
+                ? 'Nessun Pokémon corrisponde alla ricerca.'
+                : rosterLocation === 'team'
+                  ? 'Nessun Pokémon in squadra. Aggiungine uno con “Nuovo Pokémon”.'
+                  : 'Il PC è vuoto.'}
+            </p>
+          ) : (
+            <ul className="roster-list">
+              {visiblePokemon.map((entry) => (
+                <li key={entry.id}>
+                  <button
+                    aria-pressed={entry.id === activePokemon.id}
+                    className={`roster-pokemon${entry.id === activePokemon.id ? ' is-selected' : ''}`}
+                    onClick={() => {
+                      setSelectedPokemonId(entry.id)
+                      setRosterMessage('')
+                    }}
+                    type="button"
+                  >
+                    <span className="roster-monogram">
+                      {(entry.sheet.name.slice(0, 2) || 'PK').toUpperCase()}
+                    </span>
+                    <span className="roster-pokemon-copy">
+                      <strong>{entry.sheet.name || 'Nuovo Pokémon'}</strong>
+                      <small>
+                        {entry.sheet.pokemonType || 'Tipo da definire'}
+                        {rosterTrainer === 'all' ? ` · ${entry.owner}` : ''}
+                      </small>
+                    </span>
+                    {entry.id === activePokemon.id && <span className="roster-current">Scheda aperta</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {rosterMessage && (
+            <p className="roster-message" role="status">
+              {rosterMessage}
+            </p>
+          )}
+          <div className="roster-actions">
+            <span>
+              Scheda selezionata: <strong>{sheet.name || 'Nuovo Pokémon'}</strong>
+              {' · '}{activePokemon.owner}
+            </span>
+            {activePokemon.location === 'team' ? (
+              <button
+                className="roster-move-button"
+                onClick={() => moveActivePokemon('pc')}
+                type="button"
+              >
+                Sposta nel PC
+              </button>
+            ) : (
+              <button
+                className="roster-move-button"
+                onClick={() => moveActivePokemon('team')}
+                type="button"
+              >
+                Aggiungi alla squadra
+              </button>
+            )}
+          </div>
+        </section>
+
+        <PokemonSheet
+          key={activePokemon.id}
+          sheet={sheet}
+          onChange={updateActivePokemon}
+        />
+          </>
+        ) : profileView === 'trainer' ? (
+          <TrainerSheet
+            key={activeTrainerName}
+            onChange={updateActiveTrainerSheet}
+            onSelectTrainer={setRosterTrainer}
+            onOpenPokemon={(id) => {
+              setSelectedPokemonId(id)
+              setRosterTrainer(activeTrainerName)
+              setRosterLocation('team')
+              setProfileView('pokemon')
+            }}
+            party={activeTrainerParty}
+            selectedTrainer={activeTrainerName}
+            sheet={activeTrainerSheet}
+            trainers={trainers}
+          />
+        ) : null}
+
+        <SharedTable
+          activeRoomCode={activeRoomCode}
+          hidden={profileView !== 'table'}
+          onRoomCodeChange={setActiveRoomCode}
+          players={trainers}
+        />
 
         <div className="workspace-grid">
           <section className="main-column" aria-label="Tiri e attività della sessione">
@@ -350,13 +700,26 @@ function App() {
                       {latestRoll.attribute} + {latestRoll.skill}
                     </strong>
                   </div>
-                  <div className="result-faces" aria-label={`Risultati: ${latestRoll.faces.join(', ')}`}>
+                  <div
+                    className="result-faces"
+                    aria-label={`Risultati: ${latestRoll.faces.join(', ')}`}
+                    role="group"
+                  >
                     {latestRoll.faces.map((face, index) => (
                       <span
-                        className={`result-face${face >= 4 ? ' is-success' : ''}`}
+                        aria-label={`Dado ${index + 1}: ${face}, ${face >= 4 ? 'successo' : 'nessun successo'}`}
+                        className={`result-die${face >= 4 ? ' is-success' : ''}`}
                         key={`${latestRoll.id}-${index}`}
+                        role="img"
+                        style={{ animationDelay: `${index * 45}ms` }}
                       >
-                        {face}
+                        {Array.from({ length: 9 }, (_, pipIndex) => (
+                          <span
+                            aria-hidden="true"
+                            className={diePips[face].includes(pipIndex) ? 'die-pip is-visible' : 'die-pip'}
+                            key={pipIndex}
+                          />
+                        ))}
                       </span>
                     ))}
                   </div>

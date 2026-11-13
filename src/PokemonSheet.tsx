@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   attributes,
   socialAttributes,
@@ -93,6 +94,13 @@ function RatingDots({
 }
 
 export function PokemonSheet({ sheet, onChange }: Props) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [failedImageUrl, setFailedImageUrl] = useState('')
+  const imageUrl = sheet.imageUrl.trim()
+  const hasValidImageUrl = /^https?:\/\/[^\s]+$/i.test(imageUrl)
+  const hasInvalidImageUrl = imageUrl !== '' && !hasValidImageUrl
+  const hasFailedImage = hasValidImageUrl && failedImageUrl === imageUrl
+
   function updateField<Key extends keyof PokemonSheetData>(
     key: Key,
     value: PokemonSheetData[Key],
@@ -145,10 +153,35 @@ export function PokemonSheet({ sheet, onChange }: Props) {
   return (
     <section className="panel pokemon-sheet" aria-labelledby="pokemon-sheet-title">
       <div className="sheet-heading">
-        <div className="species-mark" aria-hidden="true">
-          <span>✦</span>
+        <div className="species-mark">
+          {hasValidImageUrl && !hasFailedImage ? (
+            <img
+              alt={`${sheet.name || 'Pokémon'} personalizzato`}
+              className="pokemon-custom-image"
+              onError={() => setFailedImageUrl(imageUrl)}
+              referrerPolicy="no-referrer"
+              src={imageUrl}
+            />
+          ) : (
+            <svg aria-hidden="true" className="companion-icon" viewBox="0 0 64 64" fill="none">
+              <path
+                d="M32 8c4.5 0 7.3 4.2 10.1 6.5 3.3-.5 8.3-1.6 11.5 1.6s2.1 8.2 1.6 11.5C57.5 30.3 61.7 33.1 61.7 37.6s-4.2 7.3-6.5 10.1c.5 3.3 1.6 8.3-1.6 11.5s-8.2 2.1-11.5 1.6C39.3 63.1 36.5 67.3 32 67.3s-7.3-4.2-10.1-6.5c-3.3.5-8.3 1.6-11.5-1.6s-2.1-8.2-1.6-11.5C6.5 45 2.3 42.2 2.3 37.6s4.2-7.3 6.5-10.1c-.5-3.3-1.6-8.3 1.6-11.5s8.2-2.1 11.5-1.6C24.7 12.2 27.5 8 32 8Z"
+                transform="translate(0 -5)"
+                fill="currentColor"
+                opacity=".18"
+              />
+              <path
+                d="M32 10c4.2 0 6.8 3.9 9.4 6 3.1-.5 7.7-1.5 10.7 1.5s2 7.6 1.5 10.7c2.1 2.6 6 5.2 6 9.4s-3.9 6.8-6 9.4c.5 3.1 1.5 7.7-1.5 10.7s-7.6 2-10.7 1.5c-2.6 2.1-5.2 6-9.4 6s-6.8-3.9-9.4-6c-3.1.5-7.7 1.5-10.7-1.5s-2-7.6-1.5-10.7c-2.1-2.6-6-5.2-6-9.4s3.9-6.8 6-9.4c-.5-3.1-1.5-7.7 1.5-10.7s7.6-2 10.7-1.5c2.6-2.1 5.2-6 9.4-6Z"
+                fill="currentColor"
+              />
+              <circle cx="25" cy="35" r="2.2" fill="#fffefa" />
+              <circle cx="39" cy="35" r="2.2" fill="#fffefa" />
+              <path d="M27 43c3.2 2.5 6.8 2.5 10 0" stroke="#fffefa" strokeWidth="2.4" strokeLinecap="round" />
+              <path d="m18 24-5-4m33 4 5-4M15 48l-4 3m38-3 4 3" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          )}
           <strong>{sheet.name.slice(0, 2).toUpperCase() || 'PK'}</strong>
-          <small>SCHEDA DEMO</small>
+          <small>{hasValidImageUrl && !hasFailedImage ? 'IMMAGINE PERSONALIZZATA' : 'ICONA GENERICA'}</small>
         </div>
         <div className="sheet-identity">
           <div className="panel-heading">
@@ -156,43 +189,80 @@ export function PokemonSheet({ sheet, onChange }: Props) {
               <div className="eyebrow">SCHEDA POKÉMON</div>
               <h2 id="pokemon-sheet-title">{sheet.name || 'Nuovo Pokémon'}</h2>
             </div>
-            <span className="demo-pill">ESEMPIO MODIFICABILE</span>
+            <button
+              aria-pressed={isEditing}
+              className="secondary-button sheet-edit-button"
+              onClick={() => setIsEditing((editing) => !editing)}
+              type="button"
+            >
+              {isEditing ? 'Fine modifica' : 'Modifica scheda'}
+            </button>
           </div>
-          <div className="identity-fields">
-            <TextField
-              label="Nome"
-              onChange={(value) => updateField('name', value)}
-              value={sheet.name}
-            />
-            <TextField
-              label="Tipo"
-              onChange={(value) => updateField('pokemonType', value)}
-              value={sheet.pokemonType}
-            />
-            <TextField
-              label="Allenatore"
-              onChange={(value) => updateField('trainer', value)}
-              value={sheet.trainer}
-            />
-            <TextField
-              label="Rango"
-              onChange={(value) => updateField('rank', value)}
-              value={sheet.rank}
-            />
-            <TextField
-              label="Abilità"
-              onChange={(value) => updateField('ability', value)}
-              value={sheet.ability}
-            />
-            <TextField
-              label="Natura"
-              onChange={(value) => updateField('nature', value)}
-              value={sheet.nature}
-            />
-          </div>
+          <fieldset className="identity-editable-fields" disabled={!isEditing}>
+            <div className="identity-fields">
+              <TextField
+                label="Nome"
+                onChange={(value) => updateField('name', value)}
+                value={sheet.name}
+              />
+              <TextField
+                label="Tipo"
+                onChange={(value) => updateField('pokemonType', value)}
+                value={sheet.pokemonType}
+              />
+              <TextField
+                label="Allenatore"
+                onChange={(value) => updateField('trainer', value)}
+                value={sheet.trainer}
+              />
+              <TextField
+                label="Rango"
+                onChange={(value) => updateField('rank', value)}
+                value={sheet.rank}
+              />
+              <TextField
+                label="Abilità"
+                onChange={(value) => updateField('ability', value)}
+                value={sheet.ability}
+              />
+              <TextField
+                label="Natura"
+                onChange={(value) => updateField('nature', value)}
+                value={sheet.nature}
+              />
+              {isEditing && (
+                <label className="sheet-field image-url-field">
+                  <span>Immagine personalizzata · link diretto</span>
+                  <input
+                    aria-describedby="pokemon-image-help"
+                    aria-invalid={hasInvalidImageUrl || hasFailedImage}
+                    autoComplete="url"
+                    onChange={(event) => updateField('imageUrl', event.target.value)}
+                    placeholder="https://esempio.it/immagine.jpg"
+                    type="url"
+                    value={sheet.imageUrl}
+                  />
+                  <small id="pokemon-image-help">
+                    Usa un link diretto accessibile all’immagine e solo immagini che hai diritto di usare.
+                  </small>
+                  {hasInvalidImageUrl && (
+                    <small className="image-url-error" role="alert">
+                      Inserisci un URL che inizi con http:// o https://.
+                    </small>
+                  )}
+                  {hasFailedImage && (
+                    <small className="image-url-error" role="alert">
+                      Immagine non caricata: verifica che il link punti direttamente a un file immagine.
+                    </small>
+                  )}
+                </label>
+              )}
+            </div>
+          </fieldset>
         </div>
       </div>
 
+      <fieldset className="sheet-editable-fields" disabled={!isEditing}>
       <div className="vitals-grid">
         <div className="vital-card vital-card--hp">
           <span className="vital-label">PUNTI FERITA</span>
@@ -388,6 +458,7 @@ export function PokemonSheet({ sheet, onChange }: Props) {
           </div>
         )}
       </section>
+      </fieldset>
     </section>
   )
 }
