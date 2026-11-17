@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { PokemonSheet } from './PokemonSheet'
-import { SharedTable } from './SharedTable'
+import { SharedTable, type MapEntity } from './SharedTable'
 import { TrainerSheet } from './TrainerSheet'
 import {
   attributes,
@@ -121,6 +121,26 @@ function App() {
       name: entry.sheet.name,
       pokemonType: entry.sheet.pokemonType,
     }))
+  const mapEntities: MapEntity[] = [
+    {
+      id: 'character:Master',
+      owner: 'Master',
+      kind: 'character',
+      label: 'Personaggio del Master',
+    },
+    ...trainers.map((owner) => ({
+      id: `character:${owner}`,
+      owner,
+      kind: 'character' as const,
+      label: trainerSheets[owner].name || `Personaggio di ${owner}`,
+    })),
+    ...pokemon.map((entry) => ({
+      id: `pokemon:${entry.id}`,
+      owner: entry.owner,
+      kind: 'pokemon' as const,
+      label: entry.sheet.name || `Pokémon di ${entry.owner}`,
+    })),
+  ]
   const visiblePokemon = pokemon.filter((entry) => {
     const matchesTrainer = rosterTrainer === 'all' || entry.owner === rosterTrainer
     const matchesLocation = entry.location === rosterLocation
@@ -538,6 +558,7 @@ function App() {
           activeRoomCode={activeRoomCode}
           hidden={profileView !== 'table'}
           onRoomCodeChange={setActiveRoomCode}
+          mapEntities={mapEntities}
           players={trainers}
         />
 
