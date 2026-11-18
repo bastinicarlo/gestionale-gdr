@@ -9,6 +9,8 @@ npm install
 npm run dev
 ```
 
+L'applicazione parte su `http://localhost:5173` (porta predefinita di Vite).
+
 ## Supabase per la mappa e la presentazione condivise
 
 1. Copia `.env.example` in `.env.local` e inserisci URL del progetto e chiave `sb_publishable`.
@@ -30,6 +32,10 @@ In modalità presentazione il Master può caricare una o più immagini, oppure s
 - Mappa condivisa, segnalini di personaggi e Pokémon e collage immagini Supabase aggiornati in tempo reale tramite codice stanza.
 
 Le schede Pokémon e Allenatore, i tiri e gli appunti restano locali e non sono ancora sincronizzati tra browser.
+
+## Riferimento rapido per l'AI
+
+Vedi [MODULE.md](./MODULE.md): struttura del codice, simboli principali, tipi chiave e convenzioni per ridurre i token di contesto nelle chiamate successive.
 
 ## Licenze e marchi
 

@@ -8,9 +8,6 @@
 // Importare da './module' invece che da './pokerole' direttamente.
 
 import {
-  attributes,
-  socialAttributes,
-  skills,
   type AttributeKey,
   type SocialAttributeKey,
   type SkillKey,
