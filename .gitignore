@@ -26,3 +26,4 @@ firebase-debug.log
 *.njsproj
 *.sln
 *.sw?
+supabase/migrations/20261113170000_image_composition.sql

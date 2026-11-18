@@ -100,11 +100,8 @@ create table public.image_composition_items (
     on delete cascade
 );
 
-<<<<<<< HEAD
 alter table public.image_composition_items replica identity full;
 
-=======
->>>>>>> main
 alter table public.image_composition_items enable row level security;
 grant select, insert, update, delete on public.image_composition_items to authenticated;
 
